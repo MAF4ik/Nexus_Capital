@@ -32,3 +32,13 @@ class TransferSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transfer
         fields = '__all__'                
+
+class CardSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Card
+        fields = '__all__'
+
+class  ServiceCatigories(serializers.ModelSerializer):
+    class Meta:
+        model = ServiceCatigories
+        fields = '__all__'        

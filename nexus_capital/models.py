@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 
 
 class BankUser(User):
-    
     is_deleted = models.BooleanField(default=False)
 
 class Account(models.Model):
@@ -40,7 +39,7 @@ class Transfer(models.Model):
 
 class Card(models.Model):
     
-    card_number = models.CharField(max_length=32, unique=True)
+    card_number = models.CharField(max_length=52, unique=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     account = models.ForeignKey('Account', on_delete=models.CASCADE)
