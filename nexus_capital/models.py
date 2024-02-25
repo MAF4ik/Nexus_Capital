@@ -43,9 +43,8 @@ class Card(models.Model):
     card_number = models.CharField(max_length=32, unique=True)
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
-    id_acc = models.ForeignKey('Account', on_delete=models.CASCADE)
+    account = models.ForeignKey('Account', on_delete=models.CASCADE)
     user = models.ForeignKey(BankUser, on_delete=models.CASCADE)
-
 
 class ServiceCatigories(models.Model):
     type = models.CharField(max_length=32)
