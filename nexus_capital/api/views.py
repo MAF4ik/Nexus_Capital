@@ -9,7 +9,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.tokens import AccessToken
 from django.db.models import Max
-from .serializers import BankUserSerializer, AccountSerializer
+from .serializers import *
 import random
 
 
@@ -51,7 +51,6 @@ def get_user_id_from_token(request):
     except (AuthenticationFailed, IndexError):
         return None
     
-
 @api_view(["POST"])
 def create_user(request):
     serializer = BankUserSerializer(data=request.data)
@@ -60,8 +59,31 @@ def create_user(request):
         return Response(serializer.data)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-   
 
+class UserView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+   
+    def get(self, request, user_id=None):
+        token_id = get_user_id_from_token(request)
+        user_admin = BankUser.objects.get(id=token_id)
+        admin = user_admin.is_superuser
+        if admin == True:
+            if user_id is None:
+                print(user_id)
+                user = BankUser.objects.all()
+                serializer = BankUserSerializer(user, many=True)
+                return Response(serializer.data)
+            
+            if user_id is not None:
+                print(user_id)
+                user = get_object_or_404(BankUser, id=user_id, is_deleted=False,)
+                serializer = BankUserSerializer(user)
+                return Response(serializer.data)
+            else:
+                return Response({"message":"You do not have access to this route"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 class AccountView(APIView):
         
     authentication_classes = [JWTAuthentication]
@@ -73,7 +95,6 @@ class AccountView(APIView):
         user_id = get_user_id_from_token(request)
         user = BankUser.objects.get(id=user_id)
         admin = user.is_superuser
-        is_deleted = user.is_deleted
         if admin == True:
             accounts = Account.objects.all()
             serializer = AccountSerializer(accounts, many=True)
@@ -109,10 +130,7 @@ class AccountView(APIView):
         if account is not None:
             account.is_deleted = True
             account.save()
-            return Response({"message":"The account was successfully deleted."}, status=status.HTTP_204_NO_CONTENT)
-        else:
-            serializer = AccountSerializer(account)
-            return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
+            return Response({"message":"The account was successfully deleted."}, status=status.HTTP_200_OK)
 
 
     def get_object(self, account_id):
@@ -120,19 +138,37 @@ class AccountView(APIView):
             return Account.objects.get(pk=account_id)
         except Account.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-         
-   
+
+
+class CardView(APIView): 
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, card_id=None):
+        user_id = get_user_id_from_token(request)
+        user = BankUser.objects.get(id=user_id)
+        admin = user.is_superuser
+        if admin == True:
+            cards = Card.objects.all()
+            serializer = CardSerializer(cards, many=True)
+            return Response(serializer.data)
        
-
-
-
-
+        if card_id is not None:
+            card = get_object_or_404(Card, id=card_id, user=user_id, is_deleted=False)
+            serializer = CardSerializer(card)
+            return Response(serializer.data)
+        
+        if card_id is None:
+            cards = Card.objects.filter(user=user_id, is_deleted=False)
+            serializer = CardSerializer(cards, many=True)
+            return Response(serializer.data)
        
-"""  def post(self, request):
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
         user_id = get_user_id_from_token(request)
         user = BankUser.objects.get(id=user_id)
         role = user.is_superuser
-        print(role)
         if role == False:
             account_number = random_account_number()
             created_account = Account.objects.create(account_number=account_number, user=user)
@@ -140,4 +176,5 @@ class AccountView(APIView):
             return Response({"message":"The account was created successfully."}, status=status.HTTP_201_CREATED)
         elif role == True:
             return Response({"message":"This user is an admin and cannot have an account."}, status=status.HTTP_403_FORBIDDEN)
-        """
+
+   
