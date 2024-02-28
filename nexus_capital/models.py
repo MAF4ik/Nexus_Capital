@@ -14,6 +14,7 @@ class Account(models.Model):
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(BankUser, on_delete=models.CASCADE)
+    type = models.CharField(max_length=32, default="savings")
 
 class Service(models.Model):
     

@@ -84,6 +84,32 @@ class UserView(APIView):
                 return Response({"message":"You do not have access to this route"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    def delete(self, request):
+        user_id = get_user_id_from_token(request)
+        user = get_object_or_404(BankUser, id=user_id, is_deleted=False)
+        accounts = Account.objects.filter(user=user_id, is_deleted=False)
+        cards = Card.objects.filter(user=user_id, is_deleted=False)
+
+        # Проверяем все счета пользователя
+        for account in accounts:
+            if account.balance != 0:
+                return Response({"message": "You cannot delete an account with a balance"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if cards.filter(account=account).exists():
+                return Response({"message": "You cannot delete an account with a card"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            
+
+        accounts.update(is_deleted=True)
+        cards.update(is_deleted=True)
+
+        user.is_deleted = True
+        user.save()
+
+        return Response({"message": "Accounts deleted successfully"}, status=status.HTTP_200_OK)
+
+
 class AccountView(APIView):
         
     authentication_classes = [JWTAuthentication]
@@ -93,7 +119,7 @@ class AccountView(APIView):
     def get(self, request, account_id=None):
            
         user_id = get_user_id_from_token(request)
-        user = BankUser.objects.get(id=user_id)
+        user = get_object_or_404(BankUser, id=user_id, is_deleted=False)
         admin = user.is_superuser
         if admin == True:
             accounts = Account.objects.all()
@@ -114,7 +140,7 @@ class AccountView(APIView):
        
     def post(self, request):
         user_id = get_user_id_from_token(request)
-        user = BankUser.objects.get(id=user_id)
+        user = get_object_or_404(BankUser, id=user_id, is_deleted=False)
         role = user.is_superuser
         if role == False:
             account_number = random_account_number()
@@ -127,19 +153,20 @@ class AccountView(APIView):
     def delete(self, request, account_id=None):
         user_id = get_user_id_from_token(request)
         account = get_object_or_404(Account, id=account_id, user=user_id, is_deleted=False)
-        if account is not None:
+        
+        if account.balance != 0:
+            return Response({"message": "You cannot delete an account with a balance"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        elif account.type == "checking":
             account.is_deleted = True
             account.save()
-            return Response({"message":"The account was successfully deleted."}, status=status.HTTP_200_OK)
+            Card.objects.filter(account=account).update(is_deleted=True)
 
-
-    def get_object(self, account_id):
-        try:
-            return Account.objects.get(pk=account_id)
-        except Account.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-
-
+        else:    
+            account.is_deleted = True
+            account.save()
+        return Response({"message": "The account was successfully deleted"}, status=status.HTTP_200_OK)
+        
 class CardView(APIView): 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -148,33 +175,68 @@ class CardView(APIView):
         user_id = get_user_id_from_token(request)
         user = BankUser.objects.get(id=user_id)
         admin = user.is_superuser
-        if admin == True:
+        if admin:
             cards = Card.objects.all()
             serializer = CardSerializer(cards, many=True)
-            return Response(serializer.data)
-       
+            serialized_data = serializer.data
+
+            for data in serialized_data:
+                card_id = data['id']
+                account = Account.objects.get(card__id=card_id)
+                data['account_balance'] = account.balance
+
+            return Response(serialized_data)
+
         if card_id is not None:
             card = get_object_or_404(Card, id=card_id, user=user_id, is_deleted=False)
             serializer = CardSerializer(card)
-            return Response(serializer.data)
-        
+            serialized_data = serializer.data
+            serialized_data['account_balance'] = card.account.balance
+            return Response(serialized_data)
+
         if card_id is None:
             cards = Card.objects.filter(user=user_id, is_deleted=False)
             serializer = CardSerializer(cards, many=True)
-            return Response(serializer.data)
-       
+            serialized_data = serializer.data
+
+            for data in serialized_data:
+                card_id = data['id']
+                account = Account.objects.get(card__id=card_id)
+                data['account_balance'] = account.balance
+
+            return Response(serialized_data)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request):
         user_id = get_user_id_from_token(request)
         user = BankUser.objects.get(id=user_id)
         role = user.is_superuser
-        if role == False:
+        if not role:
             account_number = random_account_number()
-            created_account = Account.objects.create(account_number=account_number, user=user)
+            created_account = Account.objects.create(account_number=account_number, user=user, type="checking")
             created_card = Card.objects.create(card_number=random_account_number(), account=created_account, user=user)
-            return Response({"message":"The account was created successfully."}, status=status.HTTP_201_CREATED)
-        elif role == True:
-            return Response({"message":"This user is an admin and cannot have an account."}, status=status.HTTP_403_FORBIDDEN)
+            serializer = CardSerializer(created_card)
+            serialized_data = serializer.data
+            serialized_data['account_balance'] = created_account.balance
+            return Response(serialized_data, status=status.HTTP_201_CREATED)
+        elif role:
+            return Response({"message": "This user is an admin and cannot have an account."}, status=status.HTTP_403_FORBIDDEN)
 
-   
+    def delete(self, request, card_id=None):
+        user_id = get_user_id_from_token(request)
+        if card_id is not None:
+
+            card = get_object_or_404(Card, id=card_id, user=user_id, is_deleted=False)
+            account = card.account
+            if card.account.balance != 0:
+                return Response({"message": "You cannot delete a card associated with an account with a balance"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            Account.objects.filter(id=account.id).update(is_deleted=True)
+            card.is_deleted = True
+            card.save()
+                  
+
+            return Response({"message": "Card deleted successfully"}, status=status.HTTP_200_OK)
+
+        return Response({"message": "Card ID is required"}, status=status.HTTP_400_BAD_REQUEST)
