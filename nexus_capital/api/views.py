@@ -1,6 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from nexus_capital.models import Account, BankUser, Card
+from nexus_capital.models import Account, BankUser, Card, Service
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -40,6 +40,7 @@ def random_card_number():
     else:
         max_card_number = str(int(max_card_number) + random.randint(1, 21))
         return max_card_number    
+
 
 
 def get_user_id_from_token(request):
@@ -240,3 +241,57 @@ class CardView(APIView):
             return Response({"message": "Card deleted successfully"}, status=status.HTTP_200_OK)
 
         return Response({"message": "Card ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ServiceView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, service_id=None):
+        if service_id is None:
+            services = Service.objects.filter(is_deleted=False)
+            serializer = ServiceSerializer(services, many=True)
+            return Response(serializer.data)
+        if service_id is not None:
+            service = get_object_or_404(Service, id=service_id, is_deleted=False)
+            serializer = ServiceSerializer(service)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def post(self, request):
+        serializer = ServiceSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, service_id=None):
+        user_id = get_user_id_from_token(request)
+        user = get_object_or_404(BankUser, id=user_id)
+        admin = user.is_superuser
+        if service_id is not None:
+            if admin == True:
+                service = get_object_or_404(Service, id=service_id)
+                service.is_deleted = True
+                service.save()
+                return Response({"message": "Service deleted successfully"}, status=status.HTTP_200_OK)
+            return Response({"message":"You do not have access to this route"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Service ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+    
+class TransactionView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user_id = get_user_id_from_token(request)
+        user = get_object_or_404(BankUser, id=user_id, is_deleted=False)
+        admin = user.is_superuser
+        if admin == True:
+            transactions = Transaction.objects.all()
+            serializer = TransactionSerializer(transactions, many=True)
+            return Response(serializer.data)
+        if admin == False:
+            transaction = Transaction.objects.filter(user=user_id)
+            serializer = TransactionSerializer(transaction)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

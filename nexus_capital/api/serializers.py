@@ -28,9 +28,9 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = '__all__'
 
-class TransferSerializer(serializers.ModelSerializer):
+class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Transfer
+        model = Transaction
         fields = '__all__'                
 
 class CardSerializer(serializers.ModelSerializer):
