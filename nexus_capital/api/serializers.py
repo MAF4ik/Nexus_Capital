@@ -23,22 +23,28 @@ class ServiceSerializer(serializers.ModelSerializer):
         model = Service
         fields = '__all__'                
 
-class PaymentSerializer(serializers.ModelSerializer):
+
+class MobilePaymentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Payment
+        model = MobilePayment
+        fields = '__all__'
+
+class UtilityPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UtilityPayment
         fields = '__all__'
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = '__all__'                
+        fields = '__all__'               
 
 class CardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Card
         fields = '__all__'
 
-class  ServiceCatigories(serializers.ModelSerializer):
+class  ServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = ServiceCatigories
+        model = ServiceCategory
         fields = '__all__'        
