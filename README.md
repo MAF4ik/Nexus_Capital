@@ -1,2 +1,9 @@
-# Nexus_Capital
-Nexus Capital Electronic Online Bank
+Nexus Capital
+
+Мобильный онлайн банк сделанный на подобии Alif Mobi 
+
+API Документация
+- CRUD опирации пользователя счетов и карт для оплаты
+- Перевод суммы денег с любой сущности
+- Оплата сервисов 
+
