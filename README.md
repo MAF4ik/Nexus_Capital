@@ -53,7 +53,7 @@ Nexus Capital Bank - это приложение для управления б�
    git clone https://github.com/your-username/nexus-capital-bank.git
 
 ## Cистема Базы данных 
-   [](bd.png)
+   [о](bd.png)
    
 ## Благодарность 
 
