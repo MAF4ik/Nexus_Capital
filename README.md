@@ -7,6 +7,6 @@
 1. Убедитесь, что у вас установлен Python версии 3.x.
 
 2. Клонируйте репозиторий проекта на вашу локальную машину:
-3. 
-   git clone https://github.com/your-username/bank-management-system.git
+    
+   git clone https://github.com/MAF4ik/Nexus_Capital.git
    cd bank-management-system
