@@ -44,4 +44,4 @@ Nexus Capital Bank - это приложение для управления б�
 
 1. Клонируйте репозиторий проекта на вашу локальную машину:
    ```bash
-   git clone https://github.com/your-username/nexus-capital-bank.git
+   git clone https://github.com/MAF4ik/Nexus_Capital.git
